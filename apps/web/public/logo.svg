@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" role="img" aria-label="RDev">
+  <text
+    x="4"
+    y="30"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="28"
+    font-weight="700"
+    letter-spacing="-0.5"
+  >
+    <tspan fill="#0891b2">R</tspan><tspan fill="#111827">Dev</tspan>
+  </text>
+</svg>

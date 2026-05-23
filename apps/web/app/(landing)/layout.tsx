@@ -21,13 +21,13 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      name: "Multica",
+      name: "RDev",
       url: "https://www.multica.ai",
       sameAs: ["https://github.com/multica-ai/multica"],
     },
     {
       "@type": "SoftwareApplication",
-      name: "Multica",
+      name: "RDev",
       applicationCategory: "ProjectManagement",
       operatingSystem: "Web",
       description:
