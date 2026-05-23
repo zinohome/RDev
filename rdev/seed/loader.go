@@ -78,6 +78,9 @@ func (l *Loader) loadSkills(ctx context.Context, wsUUID pgtype.UUID, dir string)
 }
 
 func (l *Loader) upsertSkill(ctx context.Context, wsUUID pgtype.UUID, def skillDef) error {
+	// Idempotency key: (workspace_id, name). The YAML "id" slug is only used for
+	// skill→agent attachment resolution; it is not stored in the DB primary key.
+	// DO NOTHING means re-runs are safe but won't overwrite manual edits.
 	_, err := l.db.Exec(ctx, `
 		INSERT INTO skill (workspace_id, name, description, content, config, created_by)
 		VALUES ($1, $2, $3, $4, NULL, NULL)
