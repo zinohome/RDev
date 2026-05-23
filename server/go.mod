@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.13
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.5
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/cors v1.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
@@ -23,6 +23,7 @@ require (
 	github.com/resend/resend-go/v2 v2.28.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
+	github.com/zinohome/RDev/rdev v0.0.0-local
 )
 
 require (
@@ -61,3 +62,5 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 )
+
+replace github.com/zinohome/RDev/rdev => ../rdev
