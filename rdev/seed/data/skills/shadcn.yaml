@@ -1,0 +1,108 @@
+id: shadcn
+name: shadcn/ui
+description: shadcn/ui 组件库使用指南，包含组件选择、安装和定制规范
+content: |
+  # shadcn/ui Skill
+
+  shadcn/ui 是基于 Radix UI 和 Tailwind CSS 构建的组件库，组件代码直接复制到项目中，可完全定制。
+
+  ## 安装组件
+  ```bash
+  npx shadcn@latest add <component-name>
+  # 例如：
+  npx shadcn@latest add button
+  npx shadcn@latest add dialog
+  npx shadcn@latest add data-table
+  ```
+
+  ## 核心组件速查
+
+  ### 表单相关
+  | 组件 | 用途 |
+  |------|------|
+  | Form | 包裹 react-hook-form 的 Provider |
+  | Input | 文本输入框 |
+  | Textarea | 多行文本 |
+  | Select | 下拉选择 |
+  | Checkbox | 复选框 |
+  | RadioGroup | 单选组 |
+  | Switch | 开关 |
+  | DatePicker | 日期选择 |
+
+  ### 反馈相关
+  | 组件 | 用途 |
+  |------|------|
+  | Alert | 提示信息 |
+  | Toast | 临时通知（用 sonner） |
+  | Dialog | 模态对话框 |
+  | Sheet | 抽屉面板 |
+  | Tooltip | 悬浮提示 |
+  | Badge | 状态标签 |
+
+  ### 布局相关
+  | 组件 | 用途 |
+  |------|------|
+  | Card | 卡片容器 |
+  | Separator | 分割线 |
+  | Tabs | 选项卡 |
+  | Accordion | 折叠面板 |
+  | Collapsible | 可折叠内容 |
+
+  ### 数据展示
+  | 组件 | 用途 |
+  |------|------|
+  | Table | 基础表格 |
+  | DataTable | 功能完整的数据表（排序、过滤、分页）|
+  | Avatar | 用户头像 |
+  | Progress | 进度条 |
+  | Skeleton | 加载占位符 |
+
+  ## 主题定制
+  在 `globals.css` 中修改 CSS 变量：
+  ```css
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    /* ... */
+  }
+  ```
+
+  ## 常用模式
+
+  ### 确认对话框
+  ```tsx
+  <Dialog open={open} onOpenChange={setOpen}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>确认操作</DialogTitle>
+        <DialogDescription>此操作不可撤销，是否继续？</DialogDescription>
+      </DialogHeader>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+        <Button variant="destructive" onClick={handleConfirm}>确认删除</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ```
+
+  ### 带表单的 Sheet
+  ```tsx
+  <Sheet>
+    <SheetTrigger asChild>
+      <Button>打开</Button>
+    </SheetTrigger>
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>编辑信息</SheetTitle>
+      </SheetHeader>
+      {/* 表单内容 */}
+    </SheetContent>
+  </Sheet>
+  ```
+
+  ## 注意事项
+  - 组件安装后代码在 `components/ui/` 目录，可直接修改
+  - 使用 `cn()` 工具函数合并 className
+  - 所有 Radix UI 原语都支持 `asChild` 模式，避免多余 DOM 节点

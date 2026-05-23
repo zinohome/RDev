@@ -1,0 +1,78 @@
+id: frontend-design
+name: Frontend Design
+description: 前端设计规范和最佳实践，使用 React/Next.js、Tailwind CSS 和 shadcn/ui 构建高质量 UI
+content: |
+  # Frontend Design Skill
+
+  指导使用 React/Next.js、Tailwind CSS 和 shadcn/ui 构建高质量用户界面。
+
+  ## 技术栈
+  - **框架**: React 18+ / Next.js 14+
+  - **样式**: Tailwind CSS
+  - **组件库**: shadcn/ui (基于 Radix UI)
+  - **类型**: TypeScript
+  - **状态**: React hooks + Context（轻量场景）/ Zustand（复杂场景）
+
+  ## 设计原则
+
+  ### 组件优先
+  优先使用 shadcn/ui 组件，保持视觉一致性：
+  - Button, Input, Select, Dialog, Sheet 等基础组件
+  - DataTable 用于复杂列表展示
+  - Form + react-hook-form 用于表单
+
+  ### 响应式设计
+  - Mobile-first: 默认移动端，用 md:/lg: 扩展桌面
+  - 使用 Tailwind 的响应式前缀: `sm:`, `md:`, `lg:`, `xl:`
+
+  ### 颜色和主题
+  - 使用 CSS 变量（`--background`, `--foreground`, `--primary` 等）
+  - 避免硬编码颜色值，优先用语义化 token
+
+  ## 布局模式
+
+  ```tsx
+  // 页面布局
+  <div className="container mx-auto px-4 py-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 内容 */}
+    </div>
+  </div>
+
+  // 卡片布局
+  <Card>
+    <CardHeader>
+      <CardTitle>标题</CardTitle>
+      <CardDescription>描述</CardDescription>
+    </CardHeader>
+    <CardContent>内容</CardContent>
+    <CardFooter>操作</CardFooter>
+  </Card>
+  ```
+
+  ## 交互模式
+
+  ### 加载状态
+  ```tsx
+  {isLoading ? <Skeleton className="h-4 w-full" /> : <Content />}
+  ```
+
+  ### 错误状态
+  ```tsx
+  {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+  ```
+
+  ### 空状态
+  ```tsx
+  {items.length === 0 && (
+    <div className="text-center py-12 text-muted-foreground">
+      暂无数据
+    </div>
+  )}
+  ```
+
+  ## 性能最佳实践
+  - 大列表使用虚拟滚动（@tanstack/react-virtual）
+  - 图片使用 next/image 自动优化
+  - 路由使用 next/link 进行预加载
+  - 代码分割：动态导入大型组件

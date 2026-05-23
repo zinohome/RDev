@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RDev Seed Data Schema",
+  "description": "JSON Schema for validating RDev seed YAML files (skills and agents)",
+  "definitions": {
+    "skill": {
+      "type": "object",
+      "required": ["id", "name", "description", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique slug identifier for this skill",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of what this skill does",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "content": {
+          "type": "string",
+          "description": "Full skill content in Markdown (the SKILL.md body)",
+          "minLength": 1
+        },
+        "config": {
+          "type": "object",
+          "description": "Optional JSON configuration for the skill"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["id", "name", "description", "instructions"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique slug identifier for this agent",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of this agent's role and capabilities",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Full system prompt / instructions for the agent",
+          "minLength": 1
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Agent visibility scope",
+          "enum": ["workspace", "private"],
+          "default": "workspace"
+        },
+        "default_skills": {
+          "type": "array",
+          "description": "List of skill IDs to attach to this agent",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+          },
+          "uniqueItems": true
+        },
+        "model": {
+          "type": "string",
+          "description": "Default model override (empty = workspace default)"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+id: gitea-pr-helper
+name: Gitea PR Helper
+description: 通过 rdev/vcs Provider 创建 PR 的快捷工作流，封装 diff 获取、PR 描述生成、PR 创建等步骤
+content: |
+  # Gitea PR Helper Skill
+
+  通过 rdev/vcs Provider 快速创建 Pull Request。
+
+  ## 使用场景
+  - 完成功能开发后需要创建 PR
+  - 需要标准化 PR 描述格式
+
+  ## 执行步骤
+
+  1. **获取当前 diff**
+     ```
+     使用 rdev/vcs Provider 获取当前分支与 base 分支的 diff
+     ```
+
+  2. **生成 PR 描述**
+     根据 diff 和 Issue 内容，按以下模板生成：
+     ```markdown
+     ## Summary
+     - [变更要点1]
+     - [变更要点2]
+
+     ## Changes
+     - [具体文件/模块的变更说明]
+
+     ## Test Plan
+     - [ ] 单元测试通过
+     - [ ] 集成测试通过
+     - [ ] 手动验证核心流程
+
+     Closes #<issue-number>
+     ```
+
+  3. **创建 PR**
+     调用 rdev/vcs CreatePR 接口：
+     - title: `feat/fix/chore: <简洁描述>`
+     - base: `main` 或指定分支
+     - body: 上述生成的描述
+
+  4. **回报结果**
+     在 Issue 评论中附上 PR URL
+
+  ## 注意事项
+  - 必须使用 rdev/vcs Provider，不使用 gh CLI 或 gitea CLI
+  - PR 标题遵循 Conventional Commits: feat/fix/docs/refactor/test/chore
