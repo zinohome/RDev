@@ -54,7 +54,7 @@ func (d *Driver) do(ctx context.Context, method, apiPath string, body io.Reader)
 
 func (d *Driver) ListRepos(ctx context.Context, ownerOrOrg string) ([]vcs.Repo, error) {
 	var out []vcs.Repo
-	for page := 1; page <= 4; page++ {
+	for page := 1; ; page++ {
 		apiPath := fmt.Sprintf("/api/v1/repos/search?owner=%s&limit=50&page=%d", url.QueryEscape(ownerOrOrg), page)
 		resp, err := d.do(ctx, http.MethodGet, apiPath, nil)
 		if err != nil {
@@ -144,7 +144,7 @@ func (d *Driver) ListBranches(ctx context.Context, ref vcs.RepoRef) ([]vcs.Branc
 }
 
 func (d *Driver) GetTree(ctx context.Context, ref vcs.RepoRef, branch, filePath string) ([]vcs.TreeEntry, error) {
-	// resolve branch to sha
+	// resolve branch to commit SHA
 	branchPath := fmt.Sprintf("/api/v1/repos/%s/%s/branches/%s",
 		url.PathEscape(ref.Owner), url.PathEscape(ref.Repo), url.PathEscape(branch))
 	resp, err := d.do(ctx, http.MethodGet, branchPath, nil)
@@ -163,6 +163,27 @@ func (d *Driver) GetTree(ctx context.Context, ref vcs.RepoRef, branch, filePath 
 	resp.Body.Close()
 
 	sha := branchInfo.Commit.ID
+
+	// if a sub-path is requested, resolve its tree SHA via the Contents API
+	if filePath != "" {
+		contentsPath := fmt.Sprintf("/api/v1/repos/%s/%s/contents/%s?ref=%s",
+			url.PathEscape(ref.Owner), url.PathEscape(ref.Repo),
+			filePath, url.QueryEscape(branch))
+		cr, err := d.do(ctx, http.MethodGet, contentsPath, nil)
+		if err != nil {
+			return nil, err
+		}
+		var entry struct {
+			SHA string `json:"sha"`
+		}
+		if err := json.NewDecoder(cr.Body).Decode(&entry); err != nil {
+			cr.Body.Close()
+			return nil, fmt.Errorf("gitea: decode contents entry: %w", err)
+		}
+		cr.Body.Close()
+		sha = entry.SHA
+	}
+
 	apiPath := fmt.Sprintf("/api/v1/repos/%s/%s/git/trees/%s?recursive=false",
 		url.PathEscape(ref.Owner), url.PathEscape(ref.Repo), url.PathEscape(sha))
 	resp2, err := d.do(ctx, http.MethodGet, apiPath, nil)
@@ -175,7 +196,6 @@ func (d *Driver) GetTree(ctx context.Context, ref vcs.RepoRef, branch, filePath 
 			Path string `json:"path"`
 			Type string `json:"type"`
 			Size int64  `json:"size"`
-			URL  string `json:"url"`
 		} `json:"tree"`
 	}
 	if err := json.NewDecoder(resp2.Body).Decode(&tree); err != nil {
@@ -251,12 +271,6 @@ func (d *Driver) CreatePR(ctx context.Context, ref vcs.RepoRef, params vcs.PRPar
 
 // validatePath guards against path traversal attacks.
 func validatePath(p string) error {
-	cleaned := path.Clean("/" + p)
-	for _, part := range strings.Split(cleaned, "/") {
-		if part == ".." {
-			return fmt.Errorf("vcs: path traversal not allowed: %q", p)
-		}
-	}
 	if strings.Contains(p, "..") {
 		return fmt.Errorf("vcs: path traversal not allowed: %q", p)
 	}

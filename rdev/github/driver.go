@@ -67,7 +67,7 @@ func (d *Driver) do(ctx context.Context, method, apiPath string, body io.Reader)
 func (d *Driver) ListRepos(ctx context.Context, ownerOrOrg string) ([]vcs.Repo, error) {
 	// try org first, fall back to user repos
 	var out []vcs.Repo
-	for page := 1; page <= 4; page++ {
+	for page := 1; ; page++ {
 		apiPath := fmt.Sprintf("/orgs/%s/repos?per_page=50&page=%d", ownerOrOrg, page)
 		resp, err := d.do(ctx, http.MethodGet, apiPath, nil)
 		if err != nil {
@@ -160,7 +160,7 @@ func (d *Driver) ListBranches(ctx context.Context, ref vcs.RepoRef) ([]vcs.Branc
 }
 
 func (d *Driver) GetTree(ctx context.Context, ref vcs.RepoRef, branch, filePath string) ([]vcs.TreeEntry, error) {
-	// get branch info to get commit sha
+	// get branch info to resolve root tree SHA
 	branchPath := fmt.Sprintf("/repos/%s/%s/branches/%s", ref.Owner, ref.Repo, branch)
 	resp, err := d.do(ctx, http.MethodGet, branchPath, nil)
 	if err != nil {
@@ -168,7 +168,6 @@ func (d *Driver) GetTree(ctx context.Context, ref vcs.RepoRef, branch, filePath 
 	}
 	var branchInfo struct {
 		Commit struct {
-			SHA    string `json:"sha"`
 			Commit struct {
 				Tree struct {
 					SHA string `json:"sha"`
@@ -183,6 +182,25 @@ func (d *Driver) GetTree(ctx context.Context, ref vcs.RepoRef, branch, filePath 
 	resp.Body.Close()
 
 	treeSHA := branchInfo.Commit.Commit.Tree.SHA
+
+	// if a sub-path is requested, resolve its tree SHA via the Contents API
+	if filePath != "" {
+		contentsPath := fmt.Sprintf("/repos/%s/%s/contents/%s?ref=%s", ref.Owner, ref.Repo, filePath, branch)
+		cr, err := d.do(ctx, http.MethodGet, contentsPath, nil)
+		if err != nil {
+			return nil, err
+		}
+		var entry struct {
+			SHA string `json:"sha"`
+		}
+		if err := json.NewDecoder(cr.Body).Decode(&entry); err != nil {
+			cr.Body.Close()
+			return nil, fmt.Errorf("github: decode contents entry: %w", err)
+		}
+		cr.Body.Close()
+		treeSHA = entry.SHA
+	}
+
 	apiPath := fmt.Sprintf("/repos/%s/%s/git/trees/%s", ref.Owner, ref.Repo, treeSHA)
 	resp2, err := d.do(ctx, http.MethodGet, apiPath, nil)
 	if err != nil {
@@ -283,12 +301,6 @@ func (d *Driver) CreatePR(ctx context.Context, ref vcs.RepoRef, params vcs.PRPar
 
 // validatePath guards against path traversal attacks.
 func validatePath(p string) error {
-	cleaned := path.Clean("/" + p)
-	for _, part := range strings.Split(cleaned, "/") {
-		if part == ".." {
-			return fmt.Errorf("vcs: path traversal not allowed: %q", p)
-		}
-	}
 	if strings.Contains(p, "..") {
 		return fmt.Errorf("vcs: path traversal not allowed: %q", p)
 	}
