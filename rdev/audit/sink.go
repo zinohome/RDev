@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,17 +29,28 @@ type QueryParams struct {
 	Offset      int
 }
 
-var globalSink Sink
+var (
+	globalSinkMu sync.RWMutex
+	globalSink   Sink
+)
 
-// RegisterSink sets the active sink. Must be called before the HTTP server starts.
+// RegisterSink sets the active sink. Safe for concurrent use.
 func RegisterSink(s Sink) {
+	globalSinkMu.Lock()
+	defer globalSinkMu.Unlock()
 	globalSink = s
 }
 
 // Record writes an event to the registered sink, silently dropping it if none is set.
 func Record(ctx context.Context, e Event) {
-	if globalSink != nil {
-		_ = globalSink.Write(ctx, e)
+	globalSinkMu.RLock()
+	s := globalSink
+	globalSinkMu.RUnlock()
+	if s == nil {
+		return
+	}
+	if err := s.Write(ctx, e); err != nil {
+		log.Printf("audit: write error: %v", err)
 	}
 }
 
