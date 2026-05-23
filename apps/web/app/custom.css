@@ -34,9 +34,9 @@
     --border: oklch(0.92 0.004 286.32);
     --input: oklch(0.92 0.004 286.32);
     --ring: oklch(0.705 0.015 286.067);
-    --brand: oklch(0.60 0.146 212);
-    --brand-foreground: oklch(0.985 0 0);
     --rdev-primary: oklch(0.60 0.146 212);
+    --brand: var(--rdev-primary); /* alias kept for component compatibility */
+    --brand-foreground: oklch(0.985 0 0);
     --rdev-accent-ai: oklch(0.565 0.248 268);
     --success: oklch(0.55 0.16 145);
     --warning: oklch(0.75 0.16 85);

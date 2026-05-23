@@ -124,7 +124,7 @@ function CallbackContent() {
             <Button
               variant="outline"
               onClick={() => {
-                window.location.href = `multica://auth/callback?token=${encodeURIComponent(desktopToken)}`;
+                window.location.href = `rdev://auth/callback?token=${encodeURIComponent(desktopToken)}`;
               }}
             >
               Open RDev Desktop

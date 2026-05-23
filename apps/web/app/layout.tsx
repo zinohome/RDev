@@ -73,7 +73,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.multica.ai"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost"),
   title: {
     default: "RDev — Project Management for Human + Agent Teams",
     template: "%s | RDev",
