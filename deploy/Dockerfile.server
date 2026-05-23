@@ -1,0 +1,59 @@
+# Dockerfile.server — RDev 后端多阶段构建
+# 包含 multica server 核心 + rdev/ 扩展包
+#
+# 构建上下文：仓库根目录
+#   docker build -f deploy/Dockerfile.server -t rdev-server:latest .
+
+# ─── 构建阶段 ────────────────────────────────────────────────────
+FROM golang:1.26-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+# 优先缓存依赖，源码变更不会使此层失效
+COPY server/go.mod server/go.sum ./server/
+RUN cd server && go mod download
+
+# 缓存 rdev 扩展依赖（go.sum 在模块初始化后才存在，若缺失则自动生成）
+COPY rdev/go.mod ./rdev/
+COPY rdev/go.sum* ./rdev/
+RUN cd rdev && go mod download || go mod tidy
+
+# 复制所有源码
+COPY server/ ./server/
+COPY rdev/ ./rdev/
+
+# 构建 server 二进制（含 rdev 扩展通过 replace 指令引用）
+ARG VERSION=production
+ARG COMMIT=unknown
+RUN cd server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+      -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+      -o bin/server ./cmd/server
+RUN cd server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+      -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+      -o bin/multica ./cmd/multica
+RUN cd server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+      -ldflags "-s -w" \
+      -o bin/migrate ./cmd/migrate
+
+# ─── 运行阶段 ────────────────────────────────────────────────────
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata wget
+
+WORKDIR /app
+
+COPY --from=builder /src/server/bin/server .
+COPY --from=builder /src/server/bin/multica .
+COPY --from=builder /src/server/bin/migrate .
+COPY server/migrations/ ./migrations/
+COPY deploy/init.sh .
+RUN sed -i 's/\r$//' init.sh && chmod +x init.sh
+
+EXPOSE 8080
+
+ENTRYPOINT ["./init.sh"]

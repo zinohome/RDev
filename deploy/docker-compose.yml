@@ -1,0 +1,184 @@
+# RDev 单机生产部署 — docker-compose
+#
+# 使用方式：
+#   cd deploy
+#   cp .env.example .env     # 按需修改 .env 中的密钥和配置
+#   bash init.sh             # 初始化密钥、等待 postgres、执行迁移
+#   docker compose up -d
+#
+# 服务端口：
+#   :80   rdev-web      前端 Nginx（HTTP 入口）
+#   :8080 rdev-server   后端 API（内部；Nginx 反代）
+#   :8090 rdev-gateway  模型网关（内部；Nginx /v1 反代）
+#   :3001 gitea         本地 VCS（可选，直接对外暴露）
+#
+# 注意：服务均绑定 127.0.0.1，不直接暴露到 0.0.0.0
+# 如需公网访问，请在前面架设带 TLS 的反向代理（Caddy/Nginx/Cloudflare Tunnel）
+
+name: rdev
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  frontend:
+    driver: bridge
+
+volumes:
+  pgdata:
+  gitea_data:
+  rdev_uploads:
+
+services:
+  # ─── 数据库 ────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rdev}
+      POSTGRES_USER: ${POSTGRES_USER:-rdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rdev} -d ${POSTGRES_DB:-rdev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── 后端服务 ──────────────────────────────────────────────────
+  rdev-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-rdev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rdev}?sslmode=disable
+      PORT: "8080"
+      JWT_SECRET: ${JWT_SECRET}
+      RDEV_ENCRYPTION_KEY: ${RDEV_ENCRYPTION_KEY}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      APP_ENV: ${APP_ENV:-production}
+      MULTICA_APP_URL: ${MULTICA_APP_URL:-http://localhost}
+      MULTICA_PUBLIC_URL: ${MULTICA_PUBLIC_URL:-}
+      MULTICA_TRUSTED_PROXIES: ${MULTICA_TRUSTED_PROXIES:-127.0.0.1/32}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
+      ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
+      # Gitea VCS 集成
+      GITEA_URL: ${GITEA_URL:-http://gitea:3000}
+      GITEA_ADMIN_TOKEN: ${GITEA_ADMIN_TOKEN:-}
+      # 模型网关
+      MODEL_BACKEND_URL: ${MODEL_BACKEND_URL:-http://rdev-gateway:8090}
+      # 邮件（可选）
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@example.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+    volumes:
+      - rdev_uploads:/app/data/uploads
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── 前端 Node 服务（内部）───────────────────────────────────
+  rdev-frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        REMOTE_API_URL: http://rdev-server:8080
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-}
+        NEXT_PUBLIC_APP_VERSION: ${RDEV_VERSION:-production}
+    restart: unless-stopped
+    depends_on:
+      rdev-server:
+        condition: service_healthy
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── 前端 Nginx（对外入口）────────────────────────────────────
+  rdev-web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      rdev-frontend:
+        condition: service_healthy
+      rdev-server:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-80}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - internal
+      - frontend
+
+  # ─── 模型网关（Anthropic↔OpenAI 协议转换）──────────────────
+  rdev-gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.gateway
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GATEWAY_PORT: "8090"
+      MODEL_BACKEND_URL: ${MODEL_BACKEND_URL:-}
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Gitea 本地 VCS（可选）────────────────────────────────────
+  gitea:
+    image: gitea/gitea:1.23-rootless
+    restart: unless-stopped
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: ${GITEA_DB:-gitea}
+      GITEA__database__USER: ${POSTGRES_USER:-rdev}
+      GITEA__database__PASSWD: ${POSTGRES_PASSWORD}
+      GITEA__server__DOMAIN: ${GITEA_DOMAIN:-localhost}
+      GITEA__server__ROOT_URL: ${GITEA_ROOT_URL:-http://localhost:3001}
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__security__SECRET_KEY: ${GITEA_SECRET_KEY}
+      GITEA__security__INTERNAL_TOKEN: ${GITEA_INTERNAL_TOKEN}
+    ports:
+      - "127.0.0.1:${GITEA_PORT:-3001}:3000"
+    volumes:
+      - gitea_data:/var/lib/gitea
+    networks:
+      - internal
+      - frontend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - gitea

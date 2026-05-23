@@ -1,0 +1,48 @@
+# Dockerfile.gateway — RDev 模型网关（Anthropic↔OpenAI 协议转换）
+# Phase 4 产物：rdev/gateway/ 目录包含网关 Go 源码时启用
+#
+# 构建上下文：仓库根目录
+#   docker build -f deploy/Dockerfile.gateway -t rdev-gateway:latest .
+#
+# 若 rdev/gateway/ 尚无源码，此镜像运行一个健康端点占位服务，
+# 方便整体 compose 在网关就绪前先跑通其他服务。
+
+# ─── 构建阶段 ────────────────────────────────────────────────────
+FROM golang:1.26-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+# 先下载网关模块依赖（go.sum 可能尚不存在）
+COPY rdev/go.mod ./rdev/
+COPY rdev/go.sum* ./rdev/
+RUN cd rdev && go mod download || go mod tidy
+
+COPY rdev/ ./rdev/
+
+# 尝试构建 gateway；若目录中没有 Go 源码则构建内置占位服务
+RUN set -e; \
+    if ls rdev/gateway/*.go 2>/dev/null | grep -q .; then \
+      cd rdev && CGO_ENABLED=0 GOOS=linux go build \
+        -ldflags "-s -w" \
+        -o bin/gateway ./gateway; \
+    else \
+      printf 'package main\nimport(\n"fmt"\n"net/http"\n"os"\n)\nfunc main(){\nport:=os.Getenv("GATEWAY_PORT")\nif port==""{port="8090"}\nhttp.HandleFunc("/health",func(w http.ResponseWriter,r *http.Request){fmt.Fprint(w,"ok")})\nhttp.HandleFunc("/v1/",func(w http.ResponseWriter,r *http.Request){http.Error(w,"gateway not yet implemented",http.StatusNotImplemented)})\nfmt.Printf("rdev-gateway placeholder listening :%s\\n",port)\nhttp.ListenAndServe(":"+port,nil)\n}\n' > /tmp/placeholder.go && \
+      cd /tmp && CGO_ENABLED=0 GOOS=linux go build -o /src/rdev/bin/gateway placeholder.go; \
+    fi
+
+# ─── 运行阶段 ────────────────────────────────────────────────────
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata wget
+
+WORKDIR /app
+
+COPY --from=builder /src/rdev/bin/gateway .
+
+ENV GATEWAY_PORT=8090
+
+EXPOSE 8090
+
+CMD ["./gateway"]
