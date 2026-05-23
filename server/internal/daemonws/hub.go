@@ -349,6 +349,13 @@ func (c *client) handleFrame(raw []byte) {
 	case protocol.EventDaemonHeartbeat:
 		c.handleHeartbeatFrame(msg.Payload)
 	default:
+		// Try rdev.* extension handlers first
+		if resp, handled := dispatchExtension(context.Background(), c.identity, msg.Type, msg.Payload); handled {
+			if resp != nil {
+				c.send <- resp
+			}
+			return
+		}
 		// Unknown app messages are intentionally ignored for forward
 		// compatibility with future daemon → server message types.
 	}
