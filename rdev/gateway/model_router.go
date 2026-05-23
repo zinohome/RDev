@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -40,7 +41,8 @@ type ModelRouter struct {
 func NewModelRouter() (*ModelRouter, error) {
 	raw := os.Getenv("RDEV_GATEWAY_ROUTES")
 	if raw == "" {
-		return nil, fmt.Errorf("RDEV_GATEWAY_ROUTES not set")
+		log.Println("warn: RDEV_GATEWAY_ROUTES not set, running in passthrough mode (all routing will fail)")
+		return &ModelRouter{routes: nil, providers: nil}, nil
 	}
 	var cfg RoutesConfig
 	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
