@@ -1,9 +1,9 @@
 import { HELPER_DESCRIPTION, HELPER_INSTRUCTIONS } from "./helper-instructions";
 
-const HELPER_AGENT_NAME = "Multica Helper";
+const HELPER_AGENT_NAME = "RDev Helper";
 
 /**
- * Skip path, issue 2/2: "Create your first Multica Agent".
+ * Skip path, issue 2/2: "Create your first RDev Agent".
  *
  * Companion to install-runtime-issue.ts. The body is a FUNCTION (not a
  * static const) because it needs to embed:
@@ -20,8 +20,8 @@ const HELPER_AGENT_NAME = "Multica Helper";
  * Step 2 of the skip-path bundle. Bilingual title.
  */
 export const CREATE_AGENT_GUIDE_ISSUE_TITLE = {
-  en: "Step 2 — Create your first Multica Agent",
-  zh: "第 2 步 —— 创建你的第一个 Multica Agent",
+  en: "Step 2 — Create your first RDev Agent",
+  zh: "第 2 步 —— 创建你的第一个 RDev Agent",
 } as const;
 
 interface BodyOpts {
@@ -39,7 +39,7 @@ export function getCreateAgentGuideBody(opts: BodyOpts): string {
 }
 
 function enBody(installRuntimeMention: string): string {
-  return `Once your runtime is online (see ${installRuntimeMention}), build your first agent — Multica Helper. The prompt below is pre-written; just copy.
+  return `Once your runtime is online (see ${installRuntimeMention}), build your first agent — RDev Helper. The prompt below is pre-written; just copy.
 
 ## 1. Open the new-agent screen
 
@@ -70,18 +70,18 @@ ${HELPER_INSTRUCTIONS.en}
 
 Hit **Create**. The new agent shows up in the workspace agent list.
 
-Now create an issue (or reassign an existing one) → set assignee = Multica Helper → set status to **todo**. The runtime picks the task up within a few seconds and starts working. Watch progress in the issue's task panel.
+Now create an issue (or reassign an existing one) → set assignee = RDev Helper → set status to **todo**. The runtime picks the task up within a few seconds and starts working. Watch progress in the issue's task panel.
 
 ## Where to go next
 
 - **Skills** — reusable instruction packs you can attach to any agent.
 - **Squads** — groups of agents that can be assigned together.
 - **Autopilots** — scheduled or webhook-triggered runs.
-- **Docs** — https://multica.ai/docs.`;
+- **Docs** — https://github.com/zinohome/RDev/wiki.`;
 }
 
 function zhBody(installRuntimeMention: string): string {
-  return `等运行时上线（见 ${installRuntimeMention}）之后，把第一个 agent —— Multica Helper —— 建出来。下面的提示词已经写好，直接复制即可。
+  return `等运行时上线（见 ${installRuntimeMention}）之后，把第一个 agent —— RDev Helper —— 建出来。下面的提示词已经写好，直接复制即可。
 
 ## 1. 打开新建 agent 页
 
@@ -112,12 +112,12 @@ ${HELPER_INSTRUCTIONS.zh}
 
 点 **Create**。新 agent 会出现在 workspace 的 agent 列表里。
 
-接着创建一个 issue（或把已有 issue 重新分派）→ 把 assignee 设成 Multica Helper → 状态切到 **todo**。运行时会在几秒内接走任务并开始工作。在 issue 的任务面板里看进度。
+接着创建一个 issue（或把已有 issue 重新分派）→ 把 assignee 设成 RDev Helper → 状态切到 **todo**。运行时会在几秒内接走任务并开始工作。在 issue 的任务面板里看进度。
 
 ## 接下来去哪
 
 - **Skills** —— 可复用的指令包，可挂到任何 agent 上。
 - **Squads** —— 可一起被分派的一组 agent。
 - **Autopilots** —— 定时或 webhook 触发的运行。
-- **文档** —— https://multica.ai/docs。`;
+- **文档** —— https://github.com/zinohome/RDev/wiki。`;
 }

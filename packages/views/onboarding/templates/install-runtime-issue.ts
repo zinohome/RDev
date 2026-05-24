@@ -25,11 +25,11 @@ export const INSTALL_RUNTIME_ISSUE_TITLE = {
   zh: "第 1 步 —— 连接运行时,开始使用 agent",
 } as const;
 
-const en = `Welcome to Multica.
+const en = `Welcome to RDev.
 
-Agents need a runtime before they can execute work. You can still use Multica as a lightweight project-management workspace while you install one.
+Agents need a runtime before they can execute work. You can still use RDev as a lightweight project-management workspace while you install one.
 
-## Try Multica first
+## Try RDev first
 
 Before the runtime is ready, you can:
 
@@ -54,7 +54,7 @@ For English users, the fastest first path is Codex:
 4. Confirm your terminal can find it:
    which codex
    codex --version
-5. Restart the Multica daemon:
+5. Restart the RDev daemon:
    multica daemon restart
    If you use the desktop app, restarting the app is enough.
 6. Return to Runtimes and refresh. You should see a Codex runtime online.
@@ -62,11 +62,11 @@ For English users, the fastest first path is Codex:
 
 Codex reference: https://developers.openai.com/codex/cli
 
-When the runtime is connected, you can create Multica Helper for a guided first run.`;
+When the runtime is connected, you can create RDev Helper for a guided first run.`;
 
-const zh = `欢迎来到 Multica。
+const zh = `欢迎来到 RDev。
 
-智能体需要先连上运行时才能执行工作。运行时还没准备好时,你也可以先把 Multica 当作轻量项目管理工具体验起来。
+智能体需要先连上运行时才能执行工作。运行时还没准备好时,你也可以先把 RDev 当作轻量项目管理工具体验起来。
 
 ## 先体验项目管理功能
 
@@ -94,7 +94,7 @@ const zh = `欢迎来到 Multica。
 3. 在你想让 Kimi 工作的项目目录里启动一次:
    kimi
 4. 首次启动后输入 /login,按提示完成 Kimi Code 或 API key 配置。
-5. 重启 Multica 守护进程:
+5. 重启 RDev 守护进程:
    multica daemon restart
    如果你用桌面端,重启 app 即可。
 6. 回到 Runtimes 页面刷新。你应该能看到一个在线的 Kimi 运行时。
@@ -102,7 +102,7 @@ const zh = `欢迎来到 Multica。
 
 Kimi CLI 官方文档:https://moonshotai.github.io/kimi-cli/zh/guides/getting-started.html
 
-运行时连上后,你就可以创建 Multica Helper,开始一次有智能体参与的上手引导。`;
+运行时连上后,你就可以创建 RDev Helper,开始一次有智能体参与的上手引导。`;
 
 export const INSTALL_RUNTIME_ISSUE_BODY = { en, zh } as const;
 
