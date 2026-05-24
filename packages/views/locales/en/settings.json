@@ -30,6 +30,7 @@
       "tokens": "API Tokens",
       "general": "General",
       "repositories": "Repositories",
+      "vcs_providers": "VCS Providers",
       "github": "GitHub",
       "integrations": "Integrations",
       "labs": "Labs",

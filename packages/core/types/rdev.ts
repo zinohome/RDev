@@ -31,6 +31,23 @@ export type RdevAuditAction =
   | "workspace.updated"
   | string;
 
+export interface RdevVCSProvider {
+  id: string;
+  workspace_id: string;
+  provider: "gitea" | "github";
+  base_url: string;
+  display_name?: string;
+  token_hint: string;
+  created_at: string;
+}
+
+export interface CreateRdevVCSProviderRequest {
+  provider: "gitea" | "github";
+  base_url: string;
+  token: string;
+  display_name?: string;
+}
+
 export interface RdevAuditEntry {
   id: string;
   workspace_id: string;

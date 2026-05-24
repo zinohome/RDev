@@ -30,6 +30,7 @@
       "tokens": "API Token",
       "general": "通用",
       "repositories": "代码仓库",
+      "vcs_providers": "VCS 提供方",
       "github": "GitHub",
       "integrations": "集成",
       "labs": "实验室",

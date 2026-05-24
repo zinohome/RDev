@@ -102,6 +102,8 @@ import type {
   RdevGatewayModel,
   RdevRepoTreeEntry,
   RdevAuditEntry,
+  RdevVCSProvider,
+  CreateRdevVCSProviderRequest,
 } from "../types";
 import type { OnboardingCompletionPath } from "../onboarding/types";
 import type {
@@ -1830,5 +1832,24 @@ export class ApiClient {
     return this.fetch(
       `/api/workspaces/${params.workspaceId}/audit-logs?${q}`,
     );
+  }
+
+  // RDev: VCS provider bindings (Phase 3 extension)
+  async listVCSProviders(workspaceId: string): Promise<RdevVCSProvider[]> {
+    return this.fetch(`/api/workspaces/${workspaceId}/vcs-providers`);
+  }
+
+  async createVCSProvider(workspaceId: string, req: CreateRdevVCSProviderRequest): Promise<RdevVCSProvider> {
+    return this.fetch(`/api/workspaces/${workspaceId}/vcs-providers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+  }
+
+  async deleteVCSProvider(workspaceId: string, providerId: string): Promise<void> {
+    await this.fetch(`/api/workspaces/${workspaceId}/vcs-providers/${providerId}`, {
+      method: "DELETE",
+    });
   }
 }

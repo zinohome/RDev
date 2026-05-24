@@ -364,6 +364,17 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/github/connect", h.GitHubConnect)
 					r.Delete("/github/installations/{installationId}", h.DeleteGitHubInstallation)
 				})
+
+				// RDev VCS provider bindings — member read, admin write.
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspaceMemberFromURL(queries, "id"))
+					r.Get("/vcs-providers", h.ListVCSProviders)
+				})
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
+					r.Post("/vcs-providers", h.CreateVCSProvider)
+					r.Delete("/vcs-providers/{providerId}", h.DeleteVCSProvider)
+				})
 			})
 		})
 

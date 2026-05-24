@@ -133,4 +133,6 @@ export type {
   RdevRepoTreeEntryType,
   RdevAuditEntry,
   RdevAuditAction,
+  RdevVCSProvider,
+  CreateRdevVCSProviderRequest,
 } from "./rdev";
