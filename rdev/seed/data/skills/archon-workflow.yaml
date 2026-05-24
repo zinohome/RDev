@@ -1,0 +1,38 @@
+id: archon-workflow
+name: Archon Workflow
+description: 把 Archon Issue→PR workflow 包装成一个 skill，agent 可以调用执行端到端的开发流程
+content: |
+  # Archon Workflow Skill
+
+  当用户要求执行 Archon workflow 时，按以下流程操作：
+
+  ## 1. 分析当前 Issue
+  - 仔细阅读 issue 的标题、描述和验收条件
+  - 识别需要修改的文件和功能范围
+  - 如有不清楚的地方，先向用户确认
+
+  ## 2. 创建工作分支
+  - 分支命名格式：`feature/<issue-id>-<short-description>` 或 `fix/<issue-id>-<short-description>`
+  - 基于 main/master 分支创建
+
+  ## 3. 实施代码变更
+  - 遵循 TDD 原则：先写失败测试，再实现功能，最后重构
+  - 每个提交保持原子性，提交信息清晰说明变更内容
+  - 确保测试通过、类型检查通过、lint 无报错
+
+  ## 4. 创建 Pull Request
+  使用 rdev/vcs Provider 创建 PR：
+  - PR 标题格式：`[<issue-id>] <简短描述>`
+  - PR 描述包含：变更摘要、测试计划、相关 issue 链接
+  - 标记为草稿（Draft）直到准备好 review
+
+  ## 5. 汇报结果
+  在 issue 评论中汇报：
+  - PR 链接
+  - 主要变更说明
+  - 已完成的测试覆盖
+
+  ## 注意事项
+  - 使用 `rdev/vcs` 包代替直接调用 gh CLI
+  - 保持代码风格与现有代码一致
+  - 大型变更考虑拆分为多个小 PR

@@ -1,0 +1,71 @@
+id: code-review-internal
+name: Code Review Internal
+description: 公司内部代码风格审查清单，包含 Go 规范、React 规范和安全审查要点
+content: |
+  # Code Review Internal Skill
+
+  执行代码审查时，按以下清单逐项检查。
+
+  ## Go 代码规范
+
+  ### 正确性
+  - [ ] 错误处理完整，没有被忽略的 error 返回值
+  - [ ] goroutine 泄漏检查：每个 goroutine 都有退出机制
+  - [ ] context 正确传递，不使用 context.Background() 替代上游 context
+  - [ ] 并发访问共享数据有适当的锁保护
+  - [ ] 数据库操作在事务中执行（需要原子性时）
+
+  ### 代码质量
+  - [ ] 函数职责单一，不超过 50 行（复杂逻辑例外，需注释说明）
+  - [ ] 导出的类型和函数有 godoc 注释
+  - [ ] 测试覆盖核心逻辑，包括错误路径
+  - [ ] 没有硬编码的魔法数字或字符串（应使用常量）
+  - [ ] 接口定义在消费者端，不在实现端
+
+  ### 性能
+  - [ ] 大切片预分配容量（make([]T, 0, n)）
+  - [ ] 字符串拼接使用 strings.Builder 而非 +
+  - [ ] 数据库查询没有 N+1 问题
+  - [ ] 没有不必要的反射或空接口使用
+
+  ## React/TypeScript 规范
+
+  ### 正确性
+  - [ ] Props 类型完整定义，无 any
+  - [ ] useEffect 依赖数组完整
+  - [ ] 异步操作有错误处理和 loading 状态
+  - [ ] 组件在 unmount 时清理副作用
+
+  ### 代码质量
+  - [ ] 组件职责单一，可复用
+  - [ ] 状态提升合理，避免 prop drilling（超过 3 层时考虑 Context）
+  - [ ] 列表渲染有稳定的 key（不使用 index）
+  - [ ] 没有直接操作 DOM（使用 React ref）
+
+  ### 性能
+  - [ ] 昂贵计算使用 useMemo
+  - [ ] 稳定的回调使用 useCallback
+  - [ ] 大列表考虑虚拟化（react-window）
+
+  ## 安全审查
+
+  ### 输入验证
+  - [ ] 所有外部输入（用户输入、API 响应、URL 参数）都经过验证
+  - [ ] SQL 查询使用参数化查询，无字符串拼接
+  - [ ] HTML 输出已转义（React 默认转义，直接操作 innerHTML 需审查）
+
+  ### 认证与授权
+  - [ ] 每个 API 端点都验证了权限
+  - [ ] 敏感操作记录了审计日志
+  - [ ] Token/密钥不会出现在日志中
+
+  ### 依赖安全
+  - [ ] 新增依赖来源可信，无已知 CVE
+  - [ ] 不将敏感信息存入版本控制
+
+  ## 审查结论
+
+  用以下格式给出结论：
+  - Approve：代码质量好，可合并
+  - Request Changes：列出必须修改的问题
+  - Comment：提出改进建议（非阻塞）

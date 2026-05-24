@@ -1,0 +1,63 @@
+id: frontend-design
+name: Frontend Design
+description: 前端 UI/UX 设计指导，包含设计系统使用规范、响应式布局和无障碍访问标准
+content: |
+  # Frontend Design Skill
+
+  本 skill 指导如何构建高质量的前端界面，遵循设计系统和最佳实践。
+
+  ## 设计原则
+
+  ### 一致性
+  - 使用项目已有的设计 tokens（颜色、间距、字体）
+  - 组件复用而非重新实现
+  - 遵循平台设计规范（Web/Mobile 差异）
+
+  ### 简洁性
+  - 界面只展示用户需要的信息
+  - 操作路径尽量短（最多 3 步完成核心任务）
+  - 使用渐进式披露处理复杂功能
+
+  ### 反馈
+  - 每个操作都有即时反馈（loading、success、error）
+  - 错误信息具体可操作（"邮箱格式不正确" 而非 "输入有误"）
+  - 成功操作给出确认提示
+
+  ## 组件使用规范
+
+  ### 布局
+  - 使用 CSS Grid 处理二维布局，Flexbox 处理一维布局
+  - 响应式断点：sm(640px), md(768px), lg(1024px), xl(1280px)
+  - 页面最大宽度：1280px，内容区域内边距：16px(mobile) / 24px(tablet) / 32px(desktop)
+
+  ### 表单
+  - 标签在输入框上方（不使用 placeholder 作为标签）
+  - 实时验证（onBlur），提交验证（onSubmit）
+  - 错误状态：红色边框 + 错误信息（输入框下方）
+  - 禁用提交按钮当表单验证失败
+
+  ### 数据展示
+  - 表格：固定表头，支持排序，分页（每页 20/50/100 条）
+  - 空状态：展示有意义的空状态图和引导操作
+  - 加载状态：骨架屏（Skeleton）优先于 spinner
+
+  ## 无障碍访问（a11y）
+
+  ### 必须满足（WCAG 2.1 AA）
+  - 所有交互元素可键盘访问（Tab/Enter/Space/Arrow keys）
+  - 颜色对比度：正文文字 ≥ 4.5:1，大文字 ≥ 3:1
+  - 图片有 alt 属性（装饰图使用 alt=""）
+  - 表单控件有关联的 label
+
+  ### 推荐
+  - 使用语义化 HTML 元素（button, nav, main, article）
+  - ARIA 属性仅在语义 HTML 不足时使用
+  - 焦点环可见（不要 `outline: none`）
+
+  ## 性能目标
+
+  - LCP (Largest Contentful Paint) < 2.5s
+  - CLS (Cumulative Layout Shift) < 0.1
+  - FID (First Input Delay) < 100ms
+  - 图片懒加载，使用 WebP 格式
+  - 代码分割：按路由拆分，避免首屏加载过大 bundle
