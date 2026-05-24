@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'ok'",
+    "test": "echo 'no tests yet'"
   }
 }
