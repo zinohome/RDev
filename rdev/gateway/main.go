@@ -13,7 +13,10 @@ import (
 func main() {
 	port := os.Getenv("RDEV_GATEWAY_PORT")
 	if port == "" {
-		port = "8083"
+		port = os.Getenv("PORT")
+	}
+	if port == "" {
+		port = "8090"
 	}
 
 	dbURL := os.Getenv("RDEV_GATEWAY_DB_URL")
