@@ -99,6 +99,9 @@ import type {
   Squad,
   SquadMember,
   SquadMemberStatusListResponse,
+  RdevGatewayModel,
+  RdevRepoTreeEntry,
+  RdevAuditEntry,
 } from "../types";
 import type { OnboardingCompletionPath } from "../onboarding/types";
 import type {
@@ -1770,5 +1773,62 @@ export class ApiClient {
 
   async listIssuePullRequests(issueId: string): Promise<{ pull_requests: GitHubPullRequest[] }> {
     return this.fetch(`/api/issues/${issueId}/pull-requests`);
+  }
+
+  // RDev: gateway model list (Phase 4)
+  async listGatewayModels(): Promise<RdevGatewayModel[]> {
+    return this.fetch("/api/rdev/gateway/models");
+  }
+
+  // RDev: file browser tree (Phase 6)
+  async listRepoTree(params: {
+    providerId: string;
+    owner: string;
+    repo: string;
+    ref?: string;
+    path?: string;
+  }): Promise<RdevRepoTreeEntry[]> {
+    const q = new URLSearchParams();
+    if (params.ref) q.set("ref", params.ref);
+    if (params.path) q.set("path", params.path);
+    const qs = q.toString();
+    return this.fetch(
+      `/api/rdev/repos/${encodeURIComponent(params.providerId)}/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/tree${qs ? `?${qs}` : ""}`,
+    );
+  }
+
+  async getRepoFile(params: {
+    providerId: string;
+    owner: string;
+    repo: string;
+    path: string;
+    ref?: string;
+  }): Promise<{ content: string; encoding: string }> {
+    const q = new URLSearchParams();
+    q.set("path", params.path);
+    if (params.ref) q.set("ref", params.ref);
+    return this.fetch(
+      `/api/rdev/repos/${encodeURIComponent(params.providerId)}/${encodeURIComponent(params.owner)}/${encodeURIComponent(params.repo)}/file?${q}`,
+    );
+  }
+
+  // RDev: audit log (Phase 8)
+  async listAuditLogs(params: {
+    workspaceId: string;
+    limit?: number;
+    offset?: number;
+    since?: string;
+    until?: string;
+    action?: string;
+  }): Promise<{ entries: RdevAuditEntry[]; total: number }> {
+    const q = new URLSearchParams();
+    if (params.limit !== undefined) q.set("limit", String(params.limit));
+    if (params.offset !== undefined) q.set("offset", String(params.offset));
+    if (params.since) q.set("since", params.since);
+    if (params.until) q.set("until", params.until);
+    if (params.action) q.set("action", params.action);
+    return this.fetch(
+      `/api/workspaces/${params.workspaceId}/audit-logs?${q}`,
+    );
   }
 }

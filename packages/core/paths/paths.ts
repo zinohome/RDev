@@ -37,6 +37,10 @@ function workspaceScoped(slug: string) {
     skills: () => `${ws}/skills`,
     skillDetail: (id: string) => `${ws}/skills/${encode(id)}`,
     settings: () => `${ws}/settings`,
+    auditLog: () => `${ws}/settings/audit`,
+    repos: () => `${ws}/repos`,
+    repoDetail: (providerId: string, owner: string, repo: string) =>
+      `${ws}/repos/${encode(providerId)}/${encode(owner)}/${encode(repo)}`,
     attachmentPreview: (id: string) => `${ws}/attachments/${encode(id)}/preview`,
   };
 }
