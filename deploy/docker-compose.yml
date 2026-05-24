@@ -1,0 +1,215 @@
+# RDev 单机 Docker Compose 部署
+#
+# 核心服务（默认启动）：
+#   postgres       — PostgreSQL + pgvector
+#   rdev-server    — 后端 API（含 rdev/ 扩展）
+#   rdev-frontend  — 前端 Next.js（内部）
+#   rdev-web       — Nginx 反向代理（:80 对外暴露）
+#   rdev-gateway   — Anthropic↔OpenAI 模型网关（:8090）
+#
+# 可选服务（通过 --profile 按需启动）：
+#   gitea   — 内网 Git 服务          --profile gitea
+#   ollama  — 本地 LLM（CPU/GPU）    --profile ollama
+#   vllm    — vLLM 推理（需 GPU）    --profile vllm
+#
+# 快速启动：
+#   cp deploy/.env.example deploy/.env
+#   # 修改 .env 中的密钥
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# 带 Gitea + Ollama：
+#   docker compose -f deploy/docker-compose.yml --profile gitea --profile ollama up -d
+
+name: rdev
+
+services:
+  # ─── 数据库 ─────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rdev}
+      POSTGRES_USER: ${POSTGRES_USER:-rdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rdev} -d ${POSTGRES_DB:-rdev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── 后端（含 rdev/ 扩展）──────────────────────
+  rdev-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-rdev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rdev}?sslmode=disable
+      PORT: "8080"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      RDEV_ENCRYPTION_KEY: ${RDEV_ENCRYPTION_KEY:?RDEV_ENCRYPTION_KEY is required}
+      GITEA_URL: ${GITEA_URL:-}
+      GITEA_ADMIN_TOKEN: ${GITEA_ADMIN_TOKEN:-}
+      MODEL_BACKEND_URL: ${MODEL_BACKEND_URL:-http://rdev-gateway:8090}
+      METRICS_ADDR: ${METRICS_ADDR:-}
+      APP_ENV: ${APP_ENV:-production}
+      MULTICA_APP_URL: ${MULTICA_APP_URL:-http://localhost}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      MULTICA_PUBLIC_URL: ${MULTICA_PUBLIC_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@example.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    volumes:
+      - server_uploads:/app/data/uploads
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── 前端（Next.js 内部服务）──────────────────
+  rdev-frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.web
+      args:
+        REMOTE_API_URL: http://rdev-server:8080
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-latest}
+    depends_on:
+      rdev-server:
+        condition: service_healthy
+    environment:
+      HOSTNAME: "0.0.0.0"
+    networks:
+      - internal
+    restart: unless-stopped
+
+  # ─── Nginx 反向代理（对外暴露 :80）────────────
+  rdev-web:
+    image: nginx:1.27-alpine
+    depends_on:
+      - rdev-frontend
+      - rdev-server
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-80}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - internal
+    restart: unless-stopped
+
+  # ─── 模型网关（Anthropic↔OpenAI）─────────────
+  rdev-gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.gateway
+    environment:
+      PORT: "8090"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      VLLM_URL: ${VLLM_URL:-}
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8090}:8090"
+    networks:
+      - internal
+    restart: unless-stopped
+
+  # ─── Gitea（可选，--profile gitea）───────────
+  gitea:
+    image: gitea/gitea:1.22-rootless
+    profiles: [gitea]
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: ${GITEA_DB:-gitea}
+      GITEA__database__USER: ${POSTGRES_USER:-rdev}
+      GITEA__database__PASSWD: ${POSTGRES_PASSWORD}
+      GITEA__server__ROOT_URL: ${GITEA_ROOT_URL:-http://localhost:3000}
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__security__SECRET_KEY: ${GITEA_SECRET_KEY:?GITEA_SECRET_KEY is required when using gitea profile}
+      GITEA__security__INTERNAL_TOKEN: ${GITEA_INTERNAL_TOKEN:-}
+    ports:
+      - "127.0.0.1:${GITEA_HTTP_PORT:-3000}:3000"
+      - "127.0.0.1:${GITEA_SSH_PORT:-2222}:2222"
+    volumes:
+      - gitea_data:/var/lib/gitea
+      - gitea_config:/etc/gitea
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── Ollama（可选，--profile ollama）─────────
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - internal
+    restart: unless-stopped
+    # GPU 加速（取消注释以启用 NVIDIA GPU）:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ─── vLLM（可选，--profile vllm，需要 NVIDIA GPU）
+  vllm:
+    image: vllm/vllm-openai:latest
+    profiles: [vllm]
+    command: >
+      --model ${VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}
+      --port 8000
+      --host 0.0.0.0
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+    ports:
+      - "127.0.0.1:${VLLM_PORT:-8000}:8000"
+    volumes:
+      - vllm_cache:/root/.cache/huggingface
+    networks:
+      - internal
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  server_uploads:
+  gitea_data:
+  gitea_config:
+  ollama_data:
+  vllm_cache:

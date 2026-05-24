@@ -1,0 +1,68 @@
+# RDev 模型网关（Anthropic↔OpenAI 协议转换）
+# Build context: 项目根目录（docker compose context: ..）
+#
+# 当 rdev/gateway/ 中有实际 Go 代码时，此 Dockerfile 直接构建。
+# 当前为骨架阶段，使用最小占位镜像（health check 始终返回 200）。
+
+# ─── 构建阶段（有 Go 代码时激活）────────────
+FROM golang:1.26-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+# 复制网关源码
+COPY rdev/go.mod rdev/go.sum* ./rdev/
+COPY rdev/ ./rdev/
+
+# 如果 gateway 子包存在则构建，否则构建占位服务
+ARG VERSION=dev
+ARG COMMIT=unknown
+RUN set -e; \
+    if [ -f rdev/gateway/main.go ]; then \
+      cd rdev && CGO_ENABLED=0 go build \
+        -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+        -o /gateway ./gateway/...; \
+    else \
+      # 占位：最小 HTTP 服务器，/health 返回 200
+      cat > /tmp/main.go << 'EOF'
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8090"
+	}
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"status":"placeholder","note":"rdev/gateway not yet implemented"}`)
+	})
+	http.HandleFunc("/v1/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotImplemented)
+		fmt.Fprint(w, `{"error":"gateway not yet implemented"}`)
+	})
+	http.ListenAndServe(":"+port, nil)
+}
+EOF
+      cd /tmp && CGO_ENABLED=0 go build -ldflags "-s -w" -o /gateway main.go; \
+    fi
+
+# ─── 运行阶段 ─────────────────────────────────
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /gateway /app/gateway
+
+EXPOSE 8090
+
+ENV PORT=8090
+
+ENTRYPOINT ["/app/gateway"]
