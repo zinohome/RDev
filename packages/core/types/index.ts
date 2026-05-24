@@ -127,3 +127,10 @@ export type {
   SquadMemberStatus,
   SquadMemberStatusListResponse,
 } from "./squad";
+export type {
+  RdevGatewayModel,
+  RdevRepoTreeEntry,
+  RdevRepoTreeEntryType,
+  RdevAuditEntry,
+  RdevAuditAction,
+} from "./rdev";
