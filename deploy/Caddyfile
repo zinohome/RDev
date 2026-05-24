@@ -1,0 +1,43 @@
+# RDev Caddy 反向代理配置
+#
+# 使用 http:// 前缀强制纯 HTTP，避免内网 IP 部署时浏览器因不信任本地 CA 而报
+# ERR_SSL_PROTOCOL_ERROR。如需 HTTPS，可改回 {env.RDEV_HOST} 并加 tls internal，
+# 然后将容器内 /data/caddy/pki/authorities/local/root.crt 导入浏览器信任列表。
+#
+# RDEV_HOST 由 deploy/.env 提供，例如：192.168.66.12 或内网域名
+
+http://{env.RDEV_HOST} {
+    encode gzip
+
+    # ─── 模型网关：/v1/* ─────────────────────────
+    handle /v1/* {
+        reverse_proxy rdev-gateway:8090 {
+            flush_interval -1
+            transport http {
+                read_timeout 5m
+                write_timeout 5m
+            }
+        }
+    }
+
+    # ─── 后端 API：/api/* ────────────────────────
+    handle /api/* {
+        reverse_proxy rdev-server:8080 {
+            flush_interval -1
+            transport http {
+                read_timeout 5m
+                write_timeout 5m
+            }
+        }
+    }
+
+    # ─── WebSocket：/ws/* ────────────────────────
+    handle /ws/* {
+        reverse_proxy rdev-server:8080
+    }
+
+    # ─── 前端：其余所有请求 ──────────────────────
+    handle {
+        reverse_proxy rdev-frontend:3000
+    }
+}
