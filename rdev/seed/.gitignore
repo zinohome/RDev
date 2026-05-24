@@ -1,0 +1,3 @@
+# Allow the embedded seed data directory (overrides root data/ rule)
+!data/
+!data/**

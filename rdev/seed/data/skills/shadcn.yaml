@@ -1,0 +1,111 @@
+id: shadcn
+name: shadcn/ui
+description: shadcn/ui 组件库使用指南，包含组件选择、主题定制和最佳实践
+content: |
+  # shadcn/ui Skill
+
+  本 skill 指导如何正确使用 shadcn/ui 组件库构建用户界面。
+
+  ## 安装与设置
+
+  ### 添加组件
+  ```bash
+  npx shadcn@latest add <component-name>
+  # 例如：
+  npx shadcn@latest add button
+  npx shadcn@latest add dialog
+  npx shadcn@latest add form
+  ```
+
+  ### 主题配置
+  主题 tokens 在 `tailwind.config.ts` 和 `globals.css` 中定义：
+  - `--background` / `--foreground`：主背景/文字颜色
+  - `--primary` / `--primary-foreground`：主色调
+  - `--muted` / `--muted-foreground`：次级内容颜色
+  - `--border`：边框颜色
+
+  ## 常用组件
+
+  ### Button
+  ```tsx
+  import { Button } from "@/components/ui/button"
+
+  // 变体：default, destructive, outline, secondary, ghost, link
+  <Button variant="default" size="sm">提交</Button>
+  <Button variant="destructive">删除</Button>
+  <Button disabled>加载中...</Button>
+  ```
+
+  ### Dialog / Sheet
+  ```tsx
+  import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+  <Dialog open={open} onOpenChange={setOpen}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>标题</DialogTitle>
+      </DialogHeader>
+      {/* 内容 */}
+    </DialogContent>
+  </Dialog>
+  ```
+
+  ### Form（配合 react-hook-form + zod）
+  ```tsx
+  import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
+  import { useForm } from "react-hook-form"
+  import { zodResolver } from "@hookform/resolvers/zod"
+
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "" },
+  })
+
+  <Form {...form}>
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <FormField
+        control={form.control}
+        name="name"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>名称</FormLabel>
+            <FormControl>
+              <Input placeholder="输入名称..." {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </form>
+  </Form>
+  ```
+
+  ### Table
+  ```tsx
+  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>名称</TableHead>
+        <TableHead>状态</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {items.map(item => (
+        <TableRow key={item.id}>
+          <TableCell>{item.name}</TableCell>
+          <TableCell>{item.status}</TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+  ```
+
+  ## 最佳实践
+
+  - 组件路径：`@/components/ui/<component>` (shadcn 组件) vs `@/components/<feature>` (业务组件)
+  - 不要修改 `components/ui/` 下的文件，在上层封装业务逻辑
+  - 使用 `cn()` 工具函数合并 className（来自 `@/lib/utils`）
+  - 复杂表单统一使用 react-hook-form + zod 验证
+  - 图标使用 Lucide React（已与 shadcn 集成）

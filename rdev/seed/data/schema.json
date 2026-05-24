@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RDev Seed Data Schema",
+  "description": "JSON Schema for rdev/seed YAML data files",
+  "definitions": {
+    "skill": {
+      "type": "object",
+      "required": ["id", "name", "description", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Unique skill identifier (kebab-case)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable skill name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Short description of what the skill does"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full skill instructions in Markdown format"
+        },
+        "config": {
+          "type": "object",
+          "description": "Optional skill configuration (stored as JSONB)",
+          "additionalProperties": true
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["id", "name", "description", "instructions"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Unique agent template identifier (kebab-case)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Agent display name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Short description of agent capabilities"
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full agent instructions defining behavior and capabilities"
+        },
+        "avatar_emoji": {
+          "type": "string",
+          "description": "Emoji used as agent avatar"
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["A", "B"],
+          "description": "A = core agents (full capability), B = specialist agents"
+        },
+        "default_skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "uniqueItems": true,
+          "description": "List of skill IDs to attach to this agent by default"
+        }
+      }
+    }
+  }
+}
