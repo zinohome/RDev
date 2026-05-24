@@ -1,104 +1,181 @@
-# Self-hosting Docker Compose — starts PostgreSQL, backend, and frontend.
+# RDev Self-hosting Docker Compose — builds from source.
 #
 # Services bind to 127.0.0.1 only. For cross-machine or public access, front
 # them with a reverse proxy (Caddy / nginx / Cloudflare Tunnel) that terminates
-# TLS and forwards to 127.0.0.1:8080 (backend) and 127.0.0.1:3000 (frontend).
+# TLS and forwards to 127.0.0.1:80 (web). See deploy/Caddyfile for reference.
 # Do NOT change these bindings to 0.0.0.0 — Docker bypasses host firewalls
-# (UFW/iptables) by default, so the raw ports would be exposed to the internet
-# with the default JWT_SECRET and Postgres credentials. See:
-#   apps/docs/content/docs/self-host-quickstart.mdx
+# (UFW/iptables) by default, so the raw ports would be exposed to the internet.
 #
 # Usage:
 #   cp .env.example .env
-#   # Edit .env — change JWT_SECRET at minimum
+#   # Edit .env — set POSTGRES_PASSWORD, JWT_SECRET, RDEV_ENCRYPTION_KEY
 #   docker compose -f docker-compose.selfhost.yml up -d
 #
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:8080 (also used by CLI/daemon)
+# With optional local LLM (Ollama):
+#   docker compose -f docker-compose.selfhost.yml --profile ollama up -d
+#
+# With internal Git server (Gitea):
+#   docker compose -f docker-compose.selfhost.yml --profile gitea up -d
+#
+# Web UI: http://localhost
+# API:    http://localhost/api  (also used by CLI/daemon)
+# Gateway (model proxy): http://localhost:8090
 
-name: multica
+name: rdev
 
 services:
   postgres:
     image: pgvector/pgvector:pg17
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-multica}
-      POSTGRES_USER: ${POSTGRES_USER:-multica}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-multica}
+      POSTGRES_DB: ${POSTGRES_DB:-rdev}
+      POSTGRES_USER: ${POSTGRES_USER:-rdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required — see .env.example}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-multica} -d ${POSTGRES_DB:-multica}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rdev} -d ${POSTGRES_DB:-rdev}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   backend:
-    image: ${MULTICA_BACKEND_IMAGE:-ghcr.io/multica-ai/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.server
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:${PORT:-8080}:8080"
-    volumes:
-      - backend_uploads:/app/data/uploads
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-multica}:${POSTGRES_PASSWORD:-multica}@postgres:5432/${POSTGRES_DB:-multica}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-rdev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rdev}?sslmode=disable
       PORT: "8080"
-      METRICS_ADDR: ${METRICS_ADDR:-}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      RDEV_ENCRYPTION_KEY: ${RDEV_ENCRYPTION_KEY:?RDEV_ENCRYPTION_KEY is required}
+      GITEA_URL: ${GITEA_URL:-}
+      GITEA_ADMIN_TOKEN: ${GITEA_ADMIN_TOKEN:-}
+      MODEL_BACKEND_URL: ${MODEL_BACKEND_URL:-http://gateway:8090}
+      METRICS_ADDR: ${METRICS_ADDR:-}
+      APP_ENV: ${APP_ENV:-production}
+      MULTICA_APP_URL: ${MULTICA_APP_URL:-http://localhost}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      MULTICA_PUBLIC_URL: ${MULTICA_PUBLIC_URL:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@multica.ai}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@example.com}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-25}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_TLS_INSECURE: ${SMTP_TLS_INSECURE:-false}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/auth/callback}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_REGION: ${S3_REGION:-us-west-2}
-      CLOUDFRONT_DOMAIN: ${CLOUDFRONT_DOMAIN:-}
-      CLOUDFRONT_KEY_PAIR_ID: ${CLOUDFRONT_KEY_PAIR_ID:-}
-      CLOUDFRONT_PRIVATE_KEY: ${CLOUDFRONT_PRIVATE_KEY:-}
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
-      APP_ENV: ${APP_ENV:-production}
-      MULTICA_DEV_VERIFICATION_CODE: ${MULTICA_DEV_VERIFICATION_CODE:-}
-      MULTICA_APP_URL: ${MULTICA_APP_URL:-http://localhost:3000}
-      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
-      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
-      ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
-      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
-      # Public URL the API is reachable at from the open internet, no
-      # trailing slash. Used to mint absolute webhook URLs for autopilot
-      # webhook triggers. Leave unset behind a same-origin reverse proxy
-      # (e.g. plain localhost dev); the frontend will compose the URL
-      # from window.origin + webhook_path in that case. Headers are
-      # intentionally NOT used to derive this value, to avoid Host /
-      # X-Forwarded-Host spoofing on misconfigured proxies.
-      MULTICA_PUBLIC_URL: ${MULTICA_PUBLIC_URL:-}
-      # Comma-separated CIDRs whose source IP is allowed to set
-      # X-Forwarded-For / X-Real-IP for the webhook per-IP rate limiter.
-      # Empty default = headers ignored, RemoteAddr used. Set e.g.
-      # "127.0.0.1/32" when running behind a same-host reverse proxy.
-      MULTICA_TRUSTED_PROXIES: ${MULTICA_TRUSTED_PROXIES:-}
+    volumes:
+      - backend_uploads:/app/data/uploads
+    networks:
+      - internal
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   frontend:
-    image: ${MULTICA_WEB_IMAGE:-ghcr.io/multica-ai/multica-web}:${MULTICA_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      network: host
+      args:
+        REMOTE_API_URL: http://backend:8080
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-latest}
     depends_on:
-      - backend
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+      backend:
+        condition: service_healthy
     environment:
       HOSTNAME: "0.0.0.0"
+    networks:
+      - internal
     restart: unless-stopped
+
+  web:
+    image: caddy:2-alpine
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "127.0.0.1:${WEB_PORT:-80}:80"
+      - "127.0.0.1:${WEB_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.gateway
+    environment:
+      PORT: "8090"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      VLLM_URL: ${VLLM_URL:-}
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8090}:8090"
+    networks:
+      - internal
+    restart: unless-stopped
+
+  gitea:
+    image: gitea/gitea:1.22-rootless
+    profiles: [gitea]
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: ${GITEA_DB:-gitea}
+      GITEA__database__USER: ${POSTGRES_USER:-rdev}
+      GITEA__database__PASSWD: ${POSTGRES_PASSWORD}
+      GITEA__server__ROOT_URL: ${GITEA_ROOT_URL:-http://localhost:3000}
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__security__SECRET_KEY: ${GITEA_SECRET_KEY:?GITEA_SECRET_KEY is required when using --profile gitea}
+      GITEA__security__INTERNAL_TOKEN: ${GITEA_INTERNAL_TOKEN:-}
+    ports:
+      - "127.0.0.1:${GITEA_HTTP_PORT:-3000}:3000"
+      - "127.0.0.1:${GITEA_SSH_PORT:-2222}:2222"
+    volumes:
+      - gitea_data:/var/lib/gitea
+      - gitea_config:/etc/gitea
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - internal
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
   pgdata:
   backend_uploads:
+  caddy_data:
+  caddy_config:
+  gitea_data:
+  gitea_config:
+  ollama_data:
